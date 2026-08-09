@@ -1,0 +1,29 @@
+JedrickGo
+
+     |___________apps
+
+     |                    |_______user
+
+     |                    |_______account
+
+     |                    |_______cart
+
+     |                    |            |__________cartModel
+
+     |                    |            |__________cartItemsModel
+
+     |                    |           
+
+     |                    |_______order
+
+     |                                 |__________orderModel
+
+     |                                 |__________orderItemsModel
+
+     |___________core
+
+     |___________manage.py
+
+
+
+this is my project structre
