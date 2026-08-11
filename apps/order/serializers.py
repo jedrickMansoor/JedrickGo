@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from apps.order.models import Order, OrderItem, SellerOrder
+from apps.product.serializer import ProductListSerializer
 
 
 class OrderCreateUpdateSerializer(serializers.ModelSerializer):
@@ -13,7 +14,7 @@ class OrderCreateUpdateSerializer(serializers.ModelSerializer):
         ]
         
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = serializers.StringRelatedField()
+    product = ProductListSerializer(read_only=True)
     
     class Meta:
         model = OrderItem
