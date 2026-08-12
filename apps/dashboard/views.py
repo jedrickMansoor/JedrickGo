@@ -1,23 +1,28 @@
-from django.shortcuts import render
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.decorators import action
+from rest_framework.views import APIView
 
-
-from apps.dashboard.service import DashboardService
-from apps.deal.serailizers import DealSerializer, DealImageSerializer
+# MODELS
 from apps.product.models import Product
-from apps.product.serializer import ProductCreateUpdateSerializer, ProductListSerializer
+from apps.account.models import Account
+from apps.user.models import User
+from apps.deal.models import Deal
+
+# SERIALIZERS
+from apps.deal.serailizers import DealSerializer, DealImageSerializer
+from apps.product.serializer import ProductOrderItemSerializer
+from apps.account.serializer import AccountMinimalSerializer
+
+
+# SERVICES
+from apps.dashboard.service import DashboardService
+from apps.notification.service import NotificationService
+
+# DJANGO
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.db.models import Q
 
-from apps.notification.service import NotificationService
-from apps.user.models import User
-
-from rest_framework.views import APIView
 
 
 class DashboardAPIView(APIView):
@@ -73,4 +78,51 @@ class DashboardAPIView(APIView):
              data = DashboardService.get_summary(tpq=tpq, tsq=tsq, luq=luq, roq=roq)
         
         return Response(data)
-    
+
+
+class ContentAPIView(APIView):
+    def get(self, request):
+        search = request.query_params.get("search", None)
+
+        # Helper to safely parse query parameters as booleans ("true", "1", etc.)
+        def is_true(val):
+            return str(val).lower() in ("true", "1", "yes")
+
+        show_products = is_true(request.query_params.get("products", True))
+        show_sellers = is_true(request.query_params.get("sellers", True))
+        show_deals = is_true(request.query_params.get("deals", True))
+
+        resp = {"sellers": [], "products": [], "deals": []}
+
+        if not search:
+            return Response(resp)
+
+        if show_products:
+            all_products = Product.objects.filter(
+                Q(name__icontains=search) | Q(description__icontains=search)
+            )
+            resp["products"] = ProductOrderItemSerializer(
+                all_products, many=True
+            ).data
+
+        if show_sellers:
+            filtered_sellers = Account.objects.filter(
+                user__role="seller"
+            ).filter(
+                Q(first_name__icontains=search) | Q(last_name__icontains=search)
+            )
+            resp["sellers"] = AccountMinimalSerializer(
+                filtered_sellers, many=True
+            ).data
+
+        if show_deals:
+            today = timezone.localdate()
+            filtered_deals = Deal.objects.filter(
+                Q(title__icontains=search) | Q(description__icontains=search),
+                start_date__lte=today,  
+                end_date__gte=today,  
+                status="active",
+            )
+            resp["deals"] = DealSerializer(filtered_deals, many=True).data
+
+        return Response(resp)
