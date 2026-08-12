@@ -100,6 +100,26 @@ class ProductListSerializer(serializers.ModelSerializer):
         return obj.price
 
 
+# PRODUCT ORDER ITEM
+class ProductOrderItemSerializer(serializers.ModelSerializer):
+    seller = AccountMinimalSerializer(read_only=True)
+    category = serializers.StringRelatedField()
+    
+    images = ProductImageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            "id",
+            "seller",
+            "category",
+            "name",
+            "slug",
+            "description",
+            "images",
+        ]
+
+# PRODUCT REVIEW
 class ProductReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductReview

@@ -57,9 +57,6 @@ class OrderViewSet(ModelViewSet):
         if self.action in ["list", "retrieve"] and self.request.user.role == "seller":
             return SellerOrderSerializer
 
-        elif self.action in ["list", "retrieve"] and self.request.user.role == "customer":
-            return SellerOrderSerializer
-
         return OrderListSerializer
     
     # QUERYSET
@@ -70,7 +67,7 @@ class OrderViewSet(ModelViewSet):
             return SellerOrder.objects.filter(
             seller=self.request.user.account
         ).order_by('-created_at')
-        return SellerOrder.objects.filter(order__account=self.request.user.account).order_by('-created_at')
+        return Order.objects.filter(account=self.request.user.account).order_by('-created_at')
     
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
