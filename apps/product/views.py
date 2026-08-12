@@ -17,6 +17,9 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import timedelta
 
+from django.db.models import Q
+
+
 
 
 
@@ -53,6 +56,10 @@ class ProductViewSet(ModelViewSet):
         queryset = super().get_queryset()
 
         seller_id = self.request.query_params.get("seller")
+        
+        search = self.request.query_params.get("search")
+        if search:
+            queryset = queryset.filter(Q(name__icontains=search) | Q(description__icontains=search))
         if seller_id:
             queryset = queryset.filter(seller_id=seller_id)
 
@@ -63,6 +70,10 @@ class ProductViewSet(ModelViewSet):
         p_type = self.request.query_params.get("ptype")
         if p_type == "new":
             queryset = queryset.filter(created_at__gte=timezone.now() - timedelta(days=1))
+        if p_type == "top":
+            queryset = queryset.filter(created_at__gte=timezone.now() - timedelta(days=1))
+            
+        
 
         return queryset
     
