@@ -114,16 +114,6 @@ class ProductViewSet(ModelViewSet):
 
         quantity = self.request.query_params.get("quantity")
 
-        if quantity:
-            try:
-                quantity = int(quantity)
-
-                if quantity > 0:
-                    queryset = queryset[:quantity]
-
-            except (ValueError, TypeError):
-                pass
-
         return queryset
     
     # CREATE PRODUCT OVRIDE
