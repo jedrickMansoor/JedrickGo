@@ -70,8 +70,13 @@ class ProductViewSet(ModelViewSet):
         p_type = self.request.query_params.get("ptype")
         if p_type == "new":
             queryset = queryset.filter(created_at__gte=timezone.now() - timedelta(days=1))
-        if p_type == "top":
-            queryset = queryset.filter(created_at__gte=timezone.now() - timedelta(days=1))
+        if p_type == "best":
+            today = timezone.now().date()       
+            queryset = queryset.filter(
+                deals__status="active",
+                deals__start_date__lte=today,
+                deals__end_date__gte=today,
+            ).order_by("-deals__priority")
             
         
 
