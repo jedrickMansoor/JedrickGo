@@ -17,7 +17,9 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import timedelta
 
-from django.db.models import Q
+from django.db.models import Sum, Count, Q
+
+from .pagination import ProductPagination
 
 
 
@@ -31,6 +33,8 @@ class ProductViewSet(ModelViewSet):
     permission_classes = [AllowAny]
     queryset = Product.objects.all().order_by("id")    
     lookup_field = "slug"   
+    
+    pagination_class = ProductPagination
     
     # SERIALIZER OVERRIDE
     def get_serializer_class(self):
@@ -56,29 +60,69 @@ class ProductViewSet(ModelViewSet):
         queryset = super().get_queryset()
 
         seller_id = self.request.query_params.get("seller")
-        
+
         search = self.request.query_params.get("search")
         if search:
-            queryset = queryset.filter(Q(name__icontains=search) | Q(description__icontains=search))
+            queryset = queryset.filter(
+                Q(name__icontains=search) |
+                Q(description__icontains=search)
+            )
+
         if seller_id:
-            queryset = queryset.filter(seller_id=seller_id)
+            queryset = queryset.filter(
+                seller_id=seller_id
+            )
 
         category_slug = self.request.query_params.get("category")
         if category_slug:
-            queryset = queryset.filter(category__slug=category_slug)
-        
+            queryset = queryset.filter(
+                category__slug=category_slug
+            )
+
         p_type = self.request.query_params.get("ptype")
+
         if p_type == "new":
-            queryset = queryset.filter(created_at__gte=timezone.now() - timedelta(days=1))
+            queryset = queryset.filter(
+                created_at__gte=timezone.now() - timedelta(days=1)
+            )
+
         if p_type == "best":
-            today = timezone.now().date()       
+            today = timezone.now().date()
+
             queryset = queryset.filter(
                 deals__status="active",
                 deals__start_date__lte=today,
                 deals__end_date__gte=today,
-            ).order_by("-deals__priority")
-            
-        
+            ).order_by(
+                "-deals__priority"
+            )
+
+        if p_type == "popular":
+            queryset = queryset.annotate(
+                total_sold=Coalesce(
+                    Sum(
+                        "order_items__quantity",
+                        filter=Q(
+                            order_items__seller_order__status="delivered"
+                        )
+                    ),
+                    Value(0)
+                )
+            ).order_by(
+                "-total_sold"
+            )
+
+        quantity = self.request.query_params.get("quantity")
+
+        if quantity:
+            try:
+                quantity = int(quantity)
+
+                if quantity > 0:
+                    queryset = queryset[:quantity]
+
+            except (ValueError, TypeError):
+                pass
 
         return queryset
     
