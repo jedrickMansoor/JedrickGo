@@ -1,12 +1,13 @@
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
+from rest_framework import status, permissions
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from apps.notification.models import Notification
-from apps.notification.serializers import NotificationSerializer
+from .models import FCMDevice
+from apps.notification.serializers import NotificationSerializer, FCMDeviceSerializer
 from apps.account.models import Account
 from django.db import transaction
 
@@ -14,6 +15,8 @@ from django.db.models import Q
 
 from django.utils import timezone
 from datetime import timedelta
+
+from rest_framework.views import APIView
 
 # NOTIFICATION
 class NotificationViewSet(ModelViewSet):
@@ -166,3 +169,47 @@ class NotificationViewSet(ModelViewSet):
             },
             status=status.HTTP_200_OK
         )
+
+
+
+# FCM TOKEN
+class RegisterFCMTokenView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        fcm_token = request.data.get("fcm_token")
+        device_id = request.data.get("device_id")
+        platform = request.data.get("platform", "android")
+
+        if not fcm_token:
+            return Response(
+                {"error": "fcm_token is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        device, created = FCMDevice.objects.update_or_create(
+            fcm_token=fcm_token,
+            defaults={
+                "account": request.user.account,
+                "device_id": device_id,
+                "platform": platform,
+                "is_active": True,
+            },
+        )
+
+        serializer = FCMDeviceSerializer(device)
+        return Response(
+            {"message": "Device token registered successfully", "data": serializer.data},
+            status=status.HTTP_200_OK,
+        )
+
+
+class UnregisterFCMTokenView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        fcm_token = request.data.get("fcm_token")
+        if fcm_token:
+            FCMDevice.objects.filter(
+                fcm_token=fcm_token, account=request.user.account
+            ).update(is_active=False)
+        return Response({"message": "Device deactivated"}, status=status.HTTP_200_OK)

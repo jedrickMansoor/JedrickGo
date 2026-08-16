@@ -6,6 +6,7 @@ from apps.notification.models import Notification
 from apps.order.models import Order, SellerOrder
 from apps.product.models import Product
 from apps.deal.models import Deal
+from .models import FCMDevice
 
 from apps.product.serializer import ProductListSerializer
 from apps.deal.serailizers import DealSerializer
@@ -38,3 +39,8 @@ class NotificationSerializer(serializers.ModelSerializer):
             return SellerOrderSerializer(target).data
 
         return None
+
+class FCMDeviceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FCMDevice
+        fields = ['id', 'fcm_token', 'device_id', 'platform', 'is_active']

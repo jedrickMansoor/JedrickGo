@@ -3,6 +3,11 @@ from pathlib import Path
 from datetime import timedelta
 import cloudinary
 from dotenv import load_dotenv
+import firebase_admin
+from firebase_admin import credentials
+import json
+import base64
+from firebase_admin import credentials, initialize_app
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -176,6 +181,36 @@ DATABASES = {
         },
     }
 }
+
+
+
+# Firebase Setup
+if not firebase_admin._apps:  
+    cred_path_env = os.getenv('FIREBASE_CREDENTIALS_PATH')
+    cred_base64_env = os.getenv('FIREBASE_CREDENTIALS_BASE64')
+
+    # Check .env for JSON file path
+    if cred_path_env and (BASE_DIR / cred_path_env).exists():
+        local_json_path = BASE_DIR / cred_path_env
+        cred = credentials.Certificate(str(local_json_path))
+        initialize_app(cred)
+        print("🟢 [Firebase] Initialized successfully using local JSON file.")
+
+    # Read Base64 string if JSON file is missing
+    elif cred_base64_env:
+        try:
+            cred_dict = json.loads(base64.b64decode(cred_base64_env).decode('utf-8'))
+            cred = credentials.Certificate(cred_dict)
+            initialize_app(cred)
+            print("🟢 [Firebase] Initialized successfully using Base64 environment variable.")
+        except Exception as e:
+            print(f"🔴 [Firebase] Failed to decode Base64 credentials: {e}")
+
+    else:
+        print("🟡 [Firebase] Warning: No valid Firebase credentials found.")
+            
+
+
 
 AUTH_USER_MODEL = "user.User"
 

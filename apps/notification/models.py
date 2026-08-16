@@ -1,8 +1,8 @@
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-
 from apps.account.models import Account
+from django.conf import settings
 
 
 class Notification(models.Model):
@@ -88,3 +88,36 @@ class Notification(models.Model):
     
     def __str__(self):
         return f"{self.recipient} - {self.title}"
+
+
+# FCM DEVICES
+class FCMDevice(models.Model):
+    PLATFORM_CHOICES = (
+        ("android", "Android"),
+        ("ios", "iOS"),
+        ("web", "Web"),
+    )
+
+    account = models.ForeignKey(
+        Account,
+        on_delete=models.CASCADE,
+        related_name="fcm_devices",
+        null=True,
+        blank=True,
+    )
+    fcm_token = models.TextField(unique=True, db_index=True)
+    device_id = models.CharField(max_length=255, blank=True, null=True)
+    platform = models.CharField(
+        max_length=10, choices=PLATFORM_CHOICES, default="android"
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["account", "is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.account} - {self.platform} ({self.fcm_token[:10]}...)"

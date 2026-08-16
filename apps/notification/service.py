@@ -4,9 +4,46 @@ from channels.layers import get_channel_layer
 
 from apps.account.models import Account
 from .models import Notification
+from apps.user.models import User
+
+import logging
+from firebase_admin import messaging
+from .models import FCMDevice
 
 
 class NotificationService:
+    
+    @staticmethod
+    def send_push_notification(account, title, body, extra_data=None):
+            devices = FCMDevice.objects.filter(account=account, is_active=True)
+            tokens = list(devices.values_list('fcm_token', flat=True))
+    
+            if not tokens:
+                return 0
+    
+            message = messaging.MulticastMessage(
+                notification=messaging.Notification(
+                    title=title,
+                    body=body,
+                ),
+                data={k: str(v) for k, v in (extra_data or {}).items()},
+                tokens=tokens,
+            )
+    
+            response = messaging.send_each_for_multicast(message)
+    
+            # Clean up deactivated tokens
+            failed_tokens = []
+            for idx, resp in enumerate(response.responses):
+                if not resp.success:
+                    err_code = resp.exception.code if resp.exception else None
+                    if err_code in ['UNREGISTERED', 'INVALID_ARGUMENT']:
+                        failed_tokens.append(tokens[idx])
+    
+            if failed_tokens:
+                FCMDevice.objects.filter(fcm_token__in=failed_tokens).update(is_active=False)
+    
+            return response.success_count
 
     @staticmethod
     def send(
@@ -32,6 +69,7 @@ class NotificationService:
         channel_layer = get_channel_layer()
         
         group_name = f"user_{recipient.id}"
+        print(f"Sending to: {recipient.first_name}")
         print(f"Sending to group: {group_name}")
 
         # Send WebSocket event
@@ -49,6 +87,21 @@ class NotificationService:
                 },
             },
         )
+        
+        # Fetches the first record or returns None without throwing an exception
+        recipient_user = User.objects.filter(id=recipient.id).first()
+
+        if recipient_user:
+            try:
+                NotificationService.send_push_notification(
+                    account=recipient_user.account, 
+                    title=title, 
+                    body=message
+                )
+            except Exception as e:
+                print(f"Failed to send push notification: {str(e)}")
+        else:
+            print(f"No account found for user {recipient}.")
 
         return notification
 
@@ -169,3 +222,5 @@ class NotificationService:
         )
     
     
+        
+        
