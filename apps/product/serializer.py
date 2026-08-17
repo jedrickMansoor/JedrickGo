@@ -50,6 +50,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     
     # Calculated average rating
     avg_rating = serializers.SerializerMethodField()
+    total_reviews = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -65,6 +66,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "images",
             "active_deal",
             "avg_rating",
+            "total_reviews",
             "discounted_price",
             "created_at",
             "updated_at",
@@ -111,6 +113,11 @@ class ProductListSerializer(serializers.ModelSerializer):
         avg = obj.reviews.aggregate(Avg('rating'))['rating__avg']
         return round(avg, 1) if avg is not None else 0.0
 
+    def get_total_reviews(self, obj):
+        if hasattr(obj, 'annotated_total_reviews') and obj.annotated_total_reviews is not None:
+            return obj.annotated_total_reviews
+        
+        return obj.reviews.count()
 
 # PRODUCT ORDER ITEM
 class ProductOrderItemSerializer(serializers.ModelSerializer):
