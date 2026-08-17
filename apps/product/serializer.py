@@ -5,6 +5,7 @@ from apps.deal.serailizers import DealSerializer
 from apps.product.models import Product, ProductReview, ProductImage
 
 from apps.account.serializer import AccountMinimalSerializer
+from django.db.models import Avg
 
 class ProductCreateUpdateSerializer(serializers.ModelSerializer):
     
@@ -46,6 +47,9 @@ class ProductListSerializer(serializers.ModelSerializer):
     discounted_price = serializers.SerializerMethodField()
     
     images = ProductImageSerializer(many=True, read_only=True)
+    
+    # Calculated average rating
+    avg_rating = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -60,6 +64,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "price",
             "images",
             "active_deal",
+            "avg_rating",
             "discounted_price",
             "created_at",
             "updated_at",
@@ -99,6 +104,13 @@ class ProductListSerializer(serializers.ModelSerializer):
 
         return obj.price
 
+    def get_avg_rating(self, obj):
+        if hasattr(obj, 'annotated_avg_rating') and obj.annotated_avg_rating is not None:
+            return round(obj.annotated_avg_rating, 1)
+        
+        avg = obj.reviews.aggregate(Avg('rating'))['rating__avg']
+        return round(avg, 1) if avg is not None else 0.0
+
 
 # PRODUCT ORDER ITEM
 class ProductOrderItemSerializer(serializers.ModelSerializer):
@@ -121,13 +133,24 @@ class ProductOrderItemSerializer(serializers.ModelSerializer):
 
 # PRODUCT REVIEW
 class ProductReviewSerializer(serializers.ModelSerializer):
+    product = serializers.SlugRelatedField(
+        slug_field="slug",
+        queryset=Product.objects.all()
+    )
+    
+    account = AccountMinimalSerializer(read_only=True)
+
     class Meta:
         model = ProductReview
         fields = [
+            "id",
+            "account",
             "product",
             "rating",
             "comment",
+            "created_at",
         ]
+        read_only_fields = ["id", "created_at"]
 
 
 class TopProductSerializer(serializers.ModelSerializer):

@@ -146,11 +146,14 @@ class ProductReviewViewSet(ModelViewSet):
     def get_queryset(self):
         queryset = ProductReview.objects.all().order_by("id")
 
-        product_id = self.request.query_params.get("product")
-        if product_id:
-            queryset = queryset.filter(product_id=product_id)
+        product_slug = self.request.query_params.get("product")
+        if product_slug:
+            queryset = queryset.filter(product__slug=product_slug)
 
         return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(account=self.request.user.account)
     
 
 

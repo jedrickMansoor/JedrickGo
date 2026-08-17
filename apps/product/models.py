@@ -47,11 +47,15 @@ class ProductImage(models.Model):
 # PRODUCT REVIEW MODEL
 class ProductReview(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reviews")
-    rating = models.PositiveSmallIntegerField(validators=[
-        MinValueValidator(1),
-        MaxValueValidator(5),
-    ])
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name="reviews", null=True, blank=True)
+    rating = models.DecimalField(
+    max_digits=2,      
+    decimal_places=1,  
+    validators=[
+        MinValueValidator(1.0),
+        MaxValueValidator(5.0),
+    ]
+)
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
